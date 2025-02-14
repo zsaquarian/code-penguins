@@ -7,6 +7,7 @@ class Company(Model):
     sustainability_description = CharField()
     ethics_score = IntegerField()
     ethics_description = CharField()
+    categories = ValuesList()
 
     class Meta():
         database = db
