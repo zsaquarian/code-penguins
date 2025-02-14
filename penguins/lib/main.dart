@@ -22,9 +22,11 @@ Future<void> main() async {
   // Get a specific camera from the list of available cameras.
   final firstCamera = cameras.first;
 
+  final ColorScheme colorScheme = ColorScheme.fromSeed(seedColor: Color.fromRGBO(0xFB, 0xFF, 0xE4, 1), primary: Color.fromRGBO(0xA3, 0xD1, 0xC6, 1));
+
   runApp(
     MaterialApp(
-      theme: ThemeData.dark(),
+      theme: ThemeData.from(colorScheme: colorScheme),
       home: TakePictureScreen(
         // Pass the appropriate camera to the TakePictureScreen widget.
         camera: firstCamera,
@@ -180,17 +182,17 @@ class DisplayPictureScreenState extends State<DisplayPictureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var company = widget.company;
     return Scaffold(
       appBar: AppBar(title: const Text('Display the Picture')),
       // The image is stored as a file on the device. Use the `Image.file`
       // constructor with the given path to display the image.
-      body: Column(children: [
+      body: Column(spacing: 20, children: [
         Image.file(File(widget.imagePath), height: MediaQuery.of(context).size.height / 2, width: MediaQuery.of(context).size.width, fit: BoxFit.contain),
-        Text("\"$company\" has been found"),
+        Text("\"${widget.company.trim()}\" has been found!", style: const TextStyle(fontSize: 25)),
         ElevatedButton(
           onPressed: findCompany,
-          child: Text("Check"),
+          style: ButtonStyle(fixedSize: WidgetStatePropertyAll<Size>(Size(200, 75))),
+          child: Text("Check", style: const TextStyle(fontSize: 35)),
           ),
         ]),
     );
