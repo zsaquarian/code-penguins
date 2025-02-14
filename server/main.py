@@ -37,6 +37,22 @@ def search(name):  # returns of class Company if found, 0 if not found
         }
 
 
+@app.route("/suggest/<name>", methods=["POST"])
+def suggest(name):  # returns of class Company if found, 0 if not found
+    ret = 0
+    if request.method == "POST":
+        query = db.Suggestion.select().where(db.Suggestion.name == name)
+        if len(query) > 0:
+            for suggestion in query:
+                suggestion.number += 1
+                ret = suggestion.number
+                suggestion.save()
+        else:
+            db.Suggestion.create(name=name, number=1)
+            ret = 1
+    return {"number": ret}
+
+
 @app.route("/alternatives", methods=["POST"])
 def alternatives():
     data = request.get_json()

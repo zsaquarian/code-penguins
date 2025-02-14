@@ -24,6 +24,14 @@ class Alternatives(Model):
         database = db
 
 
+class Suggestion(Model):
+    name = TextField()
+    number = IntegerField()
+
+    class Meta:
+        database = db
+
+
 if __name__ == "__main__":
     db.connect()
-    db.create_tables([Company, Alternatives])
+    db.create_tables([Company, Alternatives, Suggestion])

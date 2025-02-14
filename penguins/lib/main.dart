@@ -47,7 +47,10 @@ class TakePictureScreen extends StatefulWidget {
 
 class TakePictureScreenState extends State<TakePictureScreen> {
   late CameraController _controller;
+  late TextEditingController _controller2;
   final StreamController<String> controller = StreamController<String>(onListen: () => print('LISTENNNNNNN'));
+  var triggered = false;
+  var companyName = "";
 
   void fetchCompanies() async {
     var serverURL = Environment.serverUrl;
@@ -57,6 +60,15 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
     var data = jsonDecode(response.body);
     company_list.companyList = data;
+    print(data);
+  }
+
+  void makeSuggestion() async {
+    _controller2.clear();
+    var serverURL = Environment.serverUrl;
+    var response = await http.post(
+      Uri.parse("$serverURL/suggest/$companyName"),
+    );
   }
 
   @override
@@ -64,6 +76,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     super.initState();
     // To display the current output from the Camera,
     // create a CameraController.
+    _controller2 = TextEditingController();
     _controller = CameraController(
       // Get a specific camera from the list of available cameras.
       widget.camera,
@@ -72,10 +85,15 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     );
 
     controller.stream.listen((event) async {
-      if (company_list.companyList.contains(event.trim().toLowerCase())) {
+      // if (triggered) return;
+      if (!_controller.value.isInitialized) return;
+      var matching = event.trim().toLowerCase().split(' ').where((item) => company_list.companyList.contains(item)).toList();
+      if (matching.isNotEmpty) {
         final image = await _controller.takePicture();
         if (!context.mounted) return;
 
+        triggered = true;
+        // await controller.stream.drain();
         await Navigator.of(context).push(
             MaterialPageRoute(
               builder:
@@ -83,10 +101,12 @@ class TakePictureScreenState extends State<TakePictureScreen> {
                 // Pass the automatically generated path to
                 // the DisplayPictureScreen widget.
                 imagePath: image.path,
-                company: event,
+                company: matching[0],
                 ),
               ),
-            );
+            ).then((_)  {
+              triggered = false;
+            });
         }
     });
 
@@ -109,40 +129,45 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
   @override
   Widget build(BuildContext context) {
-    var camera = _controller.value;
-    final size = MediaQuery.of(context).size;
-    var scale = size.aspectRatio / camera.aspectRatio;
-
-    // if (scale < 1) scale = 1 / scale;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Take a picture')),
       // You must wait until the controller is initialized before displaying the
       // camera preview. Use a FutureBuilder to display a loading spinner until the
       // controller has finished initializing.
-      body: Column(children: [
-        ScalableOCR(
-          paintboxCustom: Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 4.0
-            ..color = const Color.fromARGB(153, 102, 160, 241),
-          boxLeftOff: 5,
-          boxBottomOff: 2.5,
-          boxRightOff: 5,
-          boxTopOff: 2.5,
-          boxHeight: MediaQuery.of(context).size.height / 3,
-          getScannedText: (value) {
-            // print(value);
-            setText(value);
-          }),
-          StreamBuilder<String>(
-                stream: controller.stream,
-                builder:
-                    (BuildContext context, AsyncSnapshot<String> snapshot) {
-                  return Text(
-                      snapshot.data ?? "");
-                },
-              ),]
+      body: SingleChildScrollView(child:
+        Column(children: [
+          ScalableOCR(
+            paintboxCustom: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.0
+              ..color = const Color.fromRGBO(0x1C, 0x1D, 0x29, 1),
+            boxLeftOff: 5,
+            boxBottomOff: 5,
+            boxRightOff: 5,
+            boxTopOff: 5,
+            boxHeight: MediaQuery.of(context).size.height / 2,
+            getScannedText: (value) {
+              // print(value);
+              setText(value);
+            }),
+            Text("Not finding your brand?", style: TextStyle(fontSize: 35)),
+            Padding(padding: EdgeInsets.only(top: 5, bottom: 5, left: 20, right: 20), child:
+              TextField(decoration: InputDecoration(border: OutlineInputBorder(), labelText: "Company name"), controller: _controller2,onSubmitted: (text) {
+                setState(() {
+                  companyName = text;
+                });
+              }),
+            ),
+            Padding(
+              padding: EdgeInsets.only(right: 20),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(onPressed: () {
+                  makeSuggestion();
+                }, child: Text("Submit suggestion"))
+                )
+            )
+          ])
         )
       );
   }
