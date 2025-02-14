@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 Future<void> main() async {
   // Ensure that plugin services are initialized so that `availableCameras()`
@@ -49,7 +52,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       // Get a specific camera from the list of available cameras.
       widget.camera,
       // Define the resolution to use.
-      ResolutionPreset.medium,
+      ResolutionPreset.high,
     );
 
     // Next, initialize the controller. This returns a Future.
@@ -65,6 +68,12 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 
   @override
   Widget build(BuildContext context) {
+    var camera = _controller.value;
+    final size = MediaQuery.of(context).size;
+    var scale = size.aspectRatio / camera.aspectRatio;
+
+    // if (scale < 1) scale = 1 / scale;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Take a picture')),
       // You must wait until the controller is initialized before displaying the
@@ -75,7 +84,25 @@ class TakePictureScreenState extends State<TakePictureScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
             // If the Future is complete, display the preview.
-            return CameraPreview(_controller);
+            // return Transform.scale(scale: scale, child: Center(child: CameraPreview(_controller)));
+            // return ClipRect(child: SizedOverflowBox(
+            // size: const Size(400, 400),
+            // alignment: Alignment.center,
+            // child: CameraPreview(_controller)
+            // ));
+            return AspectRatio(
+              aspectRatio: 1,
+              child: ClipRect(
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _controller!.value.previewSize!.width,
+                    height: _controller!.value.previewSize!.height,
+                    child: CameraPreview(_controller!),
+                  ),
+                ),
+              ),
+            );
           } else {
             // Otherwise, display a loading indicator.
             return const Center(child: CircularProgressIndicator());
@@ -120,10 +147,40 @@ class TakePictureScreenState extends State<TakePictureScreen> {
 }
 
 // A widget that displays the picture taken by the user.
-class DisplayPictureScreen extends StatelessWidget {
+class DisplayPictureScreen extends StatefulWidget {
   final String imagePath;
-
   const DisplayPictureScreen({super.key, required this.imagePath});
+  @override
+  DisplayPictureScreenState createState() => DisplayPictureScreenState();
+}
+
+class DisplayPictureScreenState extends State<DisplayPictureScreen> {
+  var resJson;
+
+  onUploadImage() async {
+    File image = File(widget.imagePath);
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("https://203f-106-51-254-10.ngrok-free.app/upload"),
+    );
+    Map<String, String> headers = {"Content-type": "multipart/form-data"};
+    request.files.add(
+      http.MultipartFile(
+        'image',
+        image.readAsBytes().asStream(),
+        image.lengthSync(),
+        filename: image.path.split('/').last,
+      ),
+    );
+    request.headers.addAll(headers);
+    print("request: " + request.toString());
+    var res = await request.send();
+    http.Response response = await http.Response.fromStream(res);
+    setState(() {
+      resJson = jsonDecode(response.body);
+    });
+    print(resJson);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +188,14 @@ class DisplayPictureScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Display the Picture')),
       // The image is stored as a file on the device. Use the `Image.file`
       // constructor with the given path to display the image.
-      body: Image.file(File(imagePath)),
+      body: Column(children: [
+        Image.file(File(widget.imagePath)),
+        Text("Hi"),
+        ElevatedButton(
+          onPressed: onUploadImage,
+          child: const Text("Upload"),
+          ),
+        ]),
     );
   }
 }
