@@ -22,7 +22,7 @@ Future<void> main() async {
   // Get a specific camera from the list of available cameras.
   final firstCamera = cameras.first;
 
-  final ColorScheme colorScheme = ColorScheme.fromSeed(seedColor: Color.fromRGBO(0xFB, 0xFF, 0xE4, 1), primary: Color.fromRGBO(0xA3, 0xD1, 0xC6, 1));
+  final ColorScheme colorScheme = ColorScheme.fromSeed(seedColor: Color.fromRGBO(0xFB, 0xFF, 0xE4, 1));
 
   runApp(
     MaterialApp(
@@ -47,7 +47,6 @@ class TakePictureScreen extends StatefulWidget {
 
 class TakePictureScreenState extends State<TakePictureScreen> {
   late CameraController _controller;
-  late Future<void> _initializeControllerFuture;
   final StreamController<String> controller = StreamController<String>(onListen: () => print('LISTENNNNNNN'));
 
   @override
@@ -81,8 +80,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
         }
     });
 
-    // Next, initialize the controller. This returns a Future.
-    _initializeControllerFuture = _controller.initialize();
+    _controller.initialize();
   }
 
   void setText(value) {
@@ -131,7 +129,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
                 builder:
                     (BuildContext context, AsyncSnapshot<String> snapshot) {
                   return Text(
-                      snapshot.data != null ? snapshot.data! : "");
+                      snapshot.data ?? "");
                 },
               ),]
         )
