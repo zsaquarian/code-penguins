@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_scalable_ocr/flutter_scalable_ocr.dart';
+import 'package:penguins/environment.dart';
+import 'package:penguins/result_screen.dart';
+
+import 'company_list.dart' as company_list;
 
 Future<void> main() async {
   // Ensure that plugin services are initialized so that `availableCameras()`
@@ -42,6 +46,7 @@ class TakePictureScreen extends StatefulWidget {
 class TakePictureScreenState extends State<TakePictureScreen> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
+  final StreamController<String> controller = StreamController<String>(onListen: () => print('LISTENNNNNNN'));
 
   @override
   void initState() {
@@ -55,14 +60,39 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       ResolutionPreset.high,
     );
 
+    controller.stream.listen((event) async {
+      if (company_list.companyList.contains(event.trim().toLowerCase())) {
+        final image = await _controller.takePicture();
+        if (!context.mounted) return;
+
+        await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder:
+              (context) => DisplayPictureScreen(
+                // Pass the automatically generated path to
+                // the DisplayPictureScreen widget.
+                imagePath: image.path,
+                company: event,
+                ),
+              ),
+            );
+        }
+    });
+
     // Next, initialize the controller. This returns a Future.
     _initializeControllerFuture = _controller.initialize();
   }
+
+  void setText(value) {
+    controller.add(value);
+  }
+
 
   @override
   void dispose() {
     // Dispose of the controller when the widget is disposed.
     _controller.dispose();
+    controller.close();
     super.dispose();
   }
 
@@ -79,77 +109,39 @@ class TakePictureScreenState extends State<TakePictureScreen> {
       // You must wait until the controller is initialized before displaying the
       // camera preview. Use a FutureBuilder to display a loading spinner until the
       // controller has finished initializing.
-      body: FutureBuilder<void>(
-        future: _initializeControllerFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            // If the Future is complete, display the preview.
-            // return Transform.scale(scale: scale, child: Center(child: CameraPreview(_controller)));
-            // return ClipRect(child: SizedOverflowBox(
-            // size: const Size(400, 400),
-            // alignment: Alignment.center,
-            // child: CameraPreview(_controller)
-            // ));
-            return AspectRatio(
-              aspectRatio: 1,
-              child: ClipRect(
-                child: FittedBox(
-                  fit: BoxFit.cover,
-                  child: SizedBox(
-                    width: _controller!.value.previewSize!.width,
-                    height: _controller!.value.previewSize!.height,
-                    child: CameraPreview(_controller!),
-                  ),
-                ),
-              ),
-            );
-          } else {
-            // Otherwise, display a loading indicator.
-            return const Center(child: CircularProgressIndicator());
-          }
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        // Provide an onPressed callback.
-        onPressed: () async {
-          // Take the Picture in a try / catch block. If anything goes wrong,
-          // catch the error.
-          try {
-            // Ensure that the camera is initialized.
-            await _initializeControllerFuture;
-
-            // Attempt to take a picture and get the file `image`
-            // where it was saved.
-            final image = await _controller.takePicture();
-
-            if (!context.mounted) return;
-
-            // If the picture was taken, display it on a new screen.
-            await Navigator.of(context).push(
-              MaterialPageRoute(
+      body: Column(children: [
+        ScalableOCR(
+          paintboxCustom: Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4.0
+            ..color = const Color.fromARGB(153, 102, 160, 241),
+          boxLeftOff: 5,
+          boxBottomOff: 2.5,
+          boxRightOff: 5,
+          boxTopOff: 2.5,
+          boxHeight: MediaQuery.of(context).size.height / 3,
+          getScannedText: (value) {
+            // print(value);
+            setText(value);
+          }),
+          StreamBuilder<String>(
+                stream: controller.stream,
                 builder:
-                    (context) => DisplayPictureScreen(
-                      // Pass the automatically generated path to
-                      // the DisplayPictureScreen widget.
-                      imagePath: image.path,
-                    ),
-              ),
-            );
-          } catch (e) {
-            // If an error occurs, log the error to the console.
-            print(e);
-          }
-        },
-        child: const Icon(Icons.camera_alt),
-      ),
-    );
+                    (BuildContext context, AsyncSnapshot<String> snapshot) {
+                  return Text(
+                      snapshot.data != null ? snapshot.data! : "");
+                },
+              ),]
+        )
+      );
   }
 }
 
 // A widget that displays the picture taken by the user.
 class DisplayPictureScreen extends StatefulWidget {
   final String imagePath;
-  const DisplayPictureScreen({super.key, required this.imagePath});
+  final String company;
+  const DisplayPictureScreen({super.key, required this.imagePath, required this.company});
   @override
   DisplayPictureScreenState createState() => DisplayPictureScreenState();
 }
@@ -157,43 +149,48 @@ class DisplayPictureScreen extends StatefulWidget {
 class DisplayPictureScreenState extends State<DisplayPictureScreen> {
   var resJson;
 
-  onUploadImage() async {
+  findCompany() async {
     File image = File(widget.imagePath);
+    var serverURL = Environment.serverUrl;
+    var company = widget.company.trim().toLowerCase();
     var request = http.MultipartRequest(
       'POST',
-      Uri.parse("https://203f-106-51-254-10.ngrok-free.app/upload"),
+      Uri.parse("$serverURL/search/$company"),
     );
-    Map<String, String> headers = {"Content-type": "multipart/form-data"};
-    request.files.add(
-      http.MultipartFile(
-        'image',
-        image.readAsBytes().asStream(),
-        image.lengthSync(),
-        filename: image.path.split('/').last,
-      ),
-    );
-    request.headers.addAll(headers);
     print("request: " + request.toString());
     var res = await request.send();
     http.Response response = await http.Response.fromStream(res);
-    setState(() {
-      resJson = jsonDecode(response.body);
-    });
-    print(resJson);
+    final data = jsonDecode(response.body);
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder:
+        (context) => ResultsScreen(
+          // Pass the automatically generated path to
+          // the DisplayPictureScreen widget.
+          ethicsScore: data['ethics_score'],
+          ethicsDescription: data['ethics_description'],
+          sustainabilityScore: data['sustainability_score'],
+          sustainabilityDescription: data['sustainability_description'],
+          name: widget.company
+          ),
+        ),
+      );
   }
 
   @override
   Widget build(BuildContext context) {
+    var company = widget.company;
     return Scaffold(
       appBar: AppBar(title: const Text('Display the Picture')),
       // The image is stored as a file on the device. Use the `Image.file`
       // constructor with the given path to display the image.
       body: Column(children: [
-        Image.file(File(widget.imagePath)),
-        Text("Hi"),
+        Image.file(File(widget.imagePath), height: MediaQuery.of(context).size.height / 2, width: MediaQuery.of(context).size.width, fit: BoxFit.contain),
+        Text("\"$company\" has been found"),
         ElevatedButton(
-          onPressed: onUploadImage,
-          child: const Text("Upload"),
+          onPressed: findCompany,
+          child: Text("Check"),
           ),
         ]),
     );
