@@ -1,16 +1,20 @@
 from peewee import *
-db = SqliteDatabase('companies.db')
+
+db = SqliteDatabase("companies.db")
+
 
 class Company(Model):
     name = CharField()
     sustainability_score = IntegerField()
-    sustainability_description = CharField()
+    sustainability_description = TextField()
     ethics_score = IntegerField()
-    ethics_description = CharField()
-    categories = ValuesList()
+    ethics_description = TextField()
+    categories = TextField()
 
-    class Meta():
+    class Meta:
         database = db
 
-db.connect()
-db.create_tables([Company])
+
+if __name__ == "__main__":
+    db.connect()
+    db.create_tables([Company])
