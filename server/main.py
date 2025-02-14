@@ -33,27 +33,47 @@ def search(name):  # returns of class Company if found, 0 if not found
             "sustainability_description": company.sustainability_description,
             "ethics_score": company.ethics_score,
             "ethics_description": company.ethics_description,
+            "categories": company.categories,
         }
 
 
 @app.route("/alternatives", methods=["POST"])
-def alternatives(category):
-    ls_alt = [
-        company.name
-        for company in db.Company.select().where(
-            (category in db.Company.categories)
-            and (db.Company.sustainability_score > 70 or db.Company.ethics_score > 70)
+def alternatives():
+    data = request.get_json()
+    if "category" in data:
+        query = db.Alternatives.select().where(
+            db.Alternatives.category == data["category"]
         )
-    ]
-    return jsonify(ls_alt)
+        if len(query) > 0:
+            alt = query[0]
+
+            return {
+                "alternatives": alt.alternatives.split(","),
+                "best_alternatives": alt.best_alternatives.split(","),
+            }
+        else:
+            return {"alternatives": [], "best_alternatives": []}
+    elif "company" in data:
+        query = db.Company.select().where(db.Company.name == data["company"])
+        company = query[0]
+
+        alts = []
+        for category in company.categories.split(","):
+            query = db.Alternatives.select().where(db.Alternatives.category == category)
+            if len(query) > 0:
+                alt = query[0]
+                alts.extend(alt.best_alternatives.split(","))
+        return {"alternatives": alts, "best_alternatives": []}
+
+    return {"message": "failed"}
 
 
-@app.route("/get_all_names")
+@app.route("/getAll")
 def get_all_names():
-    ls_all = {}
+    ls_all = []
     for company in db.Company.select():
         ls_all.append(company.name)
-    return jsonify(ls_all)
+    return ls_all
 
 
 @app.route("/addCompany", methods=["POST"])
@@ -68,6 +88,18 @@ def add_company():
         categories=data["categories"],
     )
     new_company.save()
+    return jsonify({"message": "success"})
+
+
+@app.route("/addAlternative", methods=["POST"])
+def add_alt():
+    data = request.get_json()
+    new_alt = db.Alternatives.create(
+        category=data["category"],
+        alternatives=data["alternatives"],
+        best_alternatives=data["best_alternatives"],
+    )
+    new_alt.save()
     return jsonify({"message": "success"})
 
 

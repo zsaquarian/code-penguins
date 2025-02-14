@@ -49,6 +49,16 @@ class TakePictureScreenState extends State<TakePictureScreen> {
   late CameraController _controller;
   final StreamController<String> controller = StreamController<String>(onListen: () => print('LISTENNNNNNN'));
 
+  void fetchCompanies() async {
+    var serverURL = Environment.serverUrl;
+    var response = await http.get(
+      Uri.parse("$serverURL/getAll"),
+    );
+
+    var data = jsonDecode(response.body);
+    company_list.companyList = data;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +91,7 @@ class TakePictureScreenState extends State<TakePictureScreen> {
     });
 
     _controller.initialize();
+    fetchCompanies();
   }
 
   void setText(value) {
@@ -172,7 +183,8 @@ class DisplayPictureScreenState extends State<DisplayPictureScreen> {
           ethicsDescription: data['ethics_description'],
           sustainabilityScore: data['sustainability_score'],
           sustainabilityDescription: data['sustainability_description'],
-          name: widget.company
+          name: widget.company,
+          categories: data['categories'].toString().split(",")
           ),
         ),
       );

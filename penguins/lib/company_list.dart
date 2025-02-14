@@ -1,3 +1,3 @@
 library;
 
-final companyList = ['iphone', 'oneplus'];
+var companyList = [];

@@ -4,7 +4,7 @@ db = SqliteDatabase("companies.db")
 
 
 class Company(Model):
-    name = CharField()
+    name = TextField()
     sustainability_score = IntegerField()
     sustainability_description = TextField()
     ethics_score = IntegerField()
@@ -15,6 +15,15 @@ class Company(Model):
         database = db
 
 
+class Alternatives(Model):
+    category = TextField()
+    alternatives = TextField()
+    best_alternatives = TextField()
+
+    class Meta:
+        database = db
+
+
 if __name__ == "__main__":
     db.connect()
-    db.create_tables([Company])
+    db.create_tables([Company, Alternatives])
