@@ -7,7 +7,8 @@ class Company(Model):
     sustainability_description = CharField()
     ethics_score = IntegerField()
     ethics_description = CharField()
-    categories = ValuesList()
+    categories = TextField()
+    verified = BooleanField()
 
     class Meta():
         database = db
