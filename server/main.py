@@ -56,18 +56,19 @@ def get_all_names():
     return jsonify(ls_all)
 
 
-@app.route("/add_company")
-def add_company(name, s_score, s_desc, e_score, e_desc, categories):
+@app.route("/addCompany", methods=["POST"])
+def add_company():
+    data = request.get_json()
     new_company = db.Company.create(
-        name=name,
-        sustainability_score=s_score,
-        sustainability_description=s_desc,
-        ethics_score=e_score,
-        ethics_description=e_desc,
-        categories=categories,
-        verified=False,
+        name=data["name"],
+        sustainability_score=data["sustainability_score"],
+        sustainability_description=data["sustainability_description"],
+        ethics_score=data["ethics_score"],
+        ethics_description=data["ethics_description"],
+        categories=data["categories"],
     )
     new_company.save()
+    return jsonify({"message": "success"})
 
 
 if __name__ == "__main__":
