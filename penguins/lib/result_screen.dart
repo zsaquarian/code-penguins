@@ -97,8 +97,10 @@ headers: <String, String>{
             });
             fetchAlternatives();
           }),
-          Column(children: bestAlternatives.map((item) => Text("- $item", style: TextStyle(fontSize: 25, color: Colors.green))).toList()),
-          Column(children: alternatives.map((item) => Text("- $item", style: TextStyle(fontSize: 25))).toList()),
+          Text("Best Brands", style: TextStyle(fontSize: 30)),
+          Column(children: bestAlternatives.map((item) => Align(alignment: Alignment.centerLeft, child: Text("- $item", style: TextStyle(fontSize: 25, color: Colors.green)))).toList()),
+          Text("Better Brands", style: TextStyle(fontSize: 30)),
+          Column(children: alternatives.map((item) => Align(alignment: Alignment.centerLeft, child: Text("- $item", style: TextStyle(fontSize: 25)))).toList()),
         ]
       )
     )

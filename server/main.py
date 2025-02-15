@@ -119,5 +119,14 @@ def add_alt():
     return jsonify({"message": "success"})
 
 
+@app.route("/getSuggestions")
+def get_suggestions():
+    query = db.Suggestion.select().order_by(db.Suggestion.number.desc()).limit(3)
+    suggestions = []
+    for suggestion in query:
+        suggestions.append({"name": suggestion.name, "number": suggestion.number})
+    return suggestions
+
+
 if __name__ == "__main__":
     app.run()
